@@ -78,7 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     SizedBox(
-                      height: 250,
+                      height: 275,
                       child: state.trendingMovies.isEmpty
                           ? const Center(child: Text('No trending movies'))
                           : ListView.builder(

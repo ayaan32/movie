@@ -8,7 +8,7 @@ class MovieRepository {
   final MovieApiService _apiService;
   final AppDatabase _database;
   final Connectivity _connectivity;
-  static const String _apiKey = 'YOUR_API_KEY_HERE'; // Replace with your TMDB API key
+  static const String _apiKey = '6a729711a72878603a76084add258807';
 
   MovieRepository(
     this._apiService,
