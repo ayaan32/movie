@@ -19,7 +19,12 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<BookmarksBloc>().add(const LoadBookmarks());
+    // Load bookmarks when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<BookmarksBloc>().add(const LoadBookmarks());
+      }
+    });
   }
 
   @override

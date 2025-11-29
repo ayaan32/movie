@@ -46,8 +46,8 @@ Future<void> setupDependencyInjection() async {
     () => SearchBloc(getIt<MovieRepository>()),
   );
 
-  getIt.registerFactory<BookmarksBloc>(
-    () => BookmarksBloc(getIt<MovieRepository>()),
+  getIt.registerSingleton<BookmarksBloc>(
+    BookmarksBloc(getIt<MovieRepository>()),
   );
 }
 

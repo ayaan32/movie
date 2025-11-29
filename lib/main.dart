@@ -4,6 +4,7 @@ import 'core/di/injection_container.dart';
 import 'presentation/bloc/home/home_bloc.dart';
 import 'presentation/bloc/search/search_bloc.dart';
 import 'presentation/bloc/bookmarks/bookmarks_bloc.dart';
+import 'presentation/bloc/bookmarks/bookmarks_event.dart';
 import 'presentation/screens/home_screen.dart';
 import 'presentation/screens/search_screen.dart';
 import 'presentation/screens/bookmarks_screen.dart';
@@ -40,8 +41,9 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
+  final BookmarksBloc _bookmarksBloc = getIt<BookmarksBloc>();
 
-  final List<Widget> _screens = [
+  late final List<Widget> _screens = [
     BlocProvider(
       create: (context) => getIt<HomeBloc>(),
       child: const HomeScreen(),
@@ -50,8 +52,8 @@ class _MainScreenState extends State<MainScreen> {
       create: (context) => getIt<SearchBloc>(),
       child: const SearchScreen(),
     ),
-    BlocProvider(
-      create: (context) => getIt<BookmarksBloc>(),
+    BlocProvider.value(
+      value: _bookmarksBloc,
       child: const BookmarksScreen(),
     ),
   ];
@@ -69,6 +71,10 @@ class _MainScreenState extends State<MainScreen> {
           setState(() {
             _currentIndex = index;
           });
+          // Refresh bookmarks when switching to bookmarks tab
+          if (index == 2) {
+            _bookmarksBloc.add(const LoadBookmarks());
+          }
         },
         items: const [
           BottomNavigationBarItem(

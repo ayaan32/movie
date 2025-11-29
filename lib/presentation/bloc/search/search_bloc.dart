@@ -7,10 +7,12 @@ import 'search_state.dart';
 class SearchBloc extends Bloc<SearchEvent, SearchState> {
   final MovieRepository _repository;
   Timer? _debounceTimer;
+  String _lastSearchedQuery = '';
 
   SearchBloc(this._repository) : super(SearchInitial()) {
     on<SearchQueryChanged>(_onSearchQueryChanged);
     on<ClearSearch>(_onClearSearch);
+    on<PerformSearchEvent>(_onPerformSearch);
   }
 
   Future<void> _onSearchQueryChanged(
@@ -20,19 +22,42 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
     _debounceTimer?.cancel();
 
     if (event.query.isEmpty) {
+      _lastSearchedQuery = '';
       emit(SearchInitial());
       return;
     }
 
-    _debounceTimer = Timer(const Duration(milliseconds: 500), () async {
-      try {
-        emit(SearchLoading());
-        final movies = await _repository.searchMovies(event.query);
+    // Debounce: wait 500ms before actually searching
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      // Trigger a new event to perform the actual search
+      // This ensures we have a fresh event handler with a valid emit
+      add(PerformSearchEvent(event.query));
+    });
+  }
+
+  Future<void> _onPerformSearch(
+    PerformSearchEvent event,
+    Emitter<SearchState> emit,
+  ) async {
+    // Skip if query has changed (another search is in progress)
+    if (_lastSearchedQuery == event.query && state is SearchLoaded) {
+      return;
+    }
+
+    _lastSearchedQuery = event.query;
+
+    try {
+      emit(SearchLoading());
+      final movies = await _repository.searchMovies(event.query);
+      // Only emit if this is still the latest query
+      if (_lastSearchedQuery == event.query) {
         emit(SearchLoaded(movies: movies, query: event.query));
-      } catch (e) {
+      }
+    } catch (e) {
+      if (_lastSearchedQuery == event.query) {
         emit(SearchError(e.toString()));
       }
-    });
+    }
   }
 
   void _onClearSearch(
@@ -40,6 +65,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
     Emitter<SearchState> emit,
   ) {
     _debounceTimer?.cancel();
+    _lastSearchedQuery = '';
     emit(SearchInitial());
   }
 

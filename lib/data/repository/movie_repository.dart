@@ -122,6 +122,8 @@ class MovieRepository {
       if (hasInternet) {
         final details = await _apiService.getMovieDetails(id, _apiKey);
         await _database.insertMovieDetails(details);
+        // Also save to movies table for bookmark functionality
+        await _database.insertMovies([details.toMovieModel()], 'details');
         return details;
       } else {
         final cached = await _database.getMovieDetails(id);
@@ -184,6 +186,18 @@ class MovieRepository {
   }
 
   Future<void> toggleBookmark(int movieId) async {
+    // Check if movie exists in database
+    final existingMovie = await _database.getMovie(movieId);
+    if (existingMovie == null) {
+      // If movie doesn't exist, fetch details and save it first
+      try {
+        await getMovieDetails(movieId);
+        // Movie is now saved, proceed with bookmark toggle
+      } catch (e) {
+        // If we can't fetch details, we can't bookmark
+        throw Exception('Cannot bookmark movie: Unable to fetch movie details');
+      }
+    }
     final isBookmarked = await _database.isBookmarked(movieId);
     await _database.toggleBookmark(movieId, !isBookmarked);
   }
