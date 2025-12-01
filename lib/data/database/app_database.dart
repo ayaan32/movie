@@ -80,26 +80,46 @@ class AppDatabase extends _$AppDatabase {
     return (select(movies)..where((m) => m.id.equals(id))).getSingleOrNull();
   }
 
-  Future<void> insertMovies(List<MovieModel> movieModels, String category) {
-    return batch((batch) {
-      batch.insertAll(
-        movies,
-        movieModels.map((model) => MoviesCompanion(
-              id: Value(model.id),
-              title: Value(model.title),
-              overview: Value(model.overview),
-              posterPath: Value(model.posterPath),
-              backdropPath: Value(model.backdropPath),
-              releaseDate: Value(model.releaseDate),
-              voteAverage: Value(model.voteAverage),
-              voteCount: Value(model.voteCount),
-              popularity: Value(model.popularity),
-              cachedAt: Value(DateTime.now()),
-            )),
-        mode: InsertMode.replace,
+  Future<void> insertMovies(List<MovieModel> movieModels, String category) async {
+  for (final model in movieModels) {
+    final existing = await getMovie(model.id);
+    
+    if (existing == null) {
+      // New movie - insert with bookmark false
+      await into(movies).insert(
+        MoviesCompanion(
+          id: Value(model.id),
+          title: Value(model.title),
+          overview: Value(model.overview),
+          posterPath: Value(model.posterPath),
+          backdropPath: Value(model.backdropPath),
+          releaseDate: Value(model.releaseDate),
+          voteAverage: Value(model.voteAverage),
+          voteCount: Value(model.voteCount),
+          popularity: Value(model.popularity),
+          isBookmarked: const Value(false),
+          cachedAt: Value(DateTime.now()),
+        ),
       );
-    });
+    } else {
+      // Existing movie - update but preserve bookmark status
+      await (update(movies)..where((m) => m.id.equals(model.id))).write(
+        MoviesCompanion(
+          title: Value(model.title),
+          overview: Value(model.overview),
+          posterPath: Value(model.posterPath),
+          backdropPath: Value(model.backdropPath),
+          releaseDate: Value(model.releaseDate),
+          voteAverage: Value(model.voteAverage),
+          voteCount: Value(model.voteCount),
+          popularity: Value(model.popularity),
+          cachedAt: Value(DateTime.now()),
+          // Don't update isBookmarked - preserve existing value
+        ),
+      );
+    }
   }
+}
 
   Future<void> toggleBookmark(int movieId, bool isBookmarked) {
     return (update(movies)..where((m) => m.id.equals(movieId)))

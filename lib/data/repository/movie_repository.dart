@@ -116,40 +116,26 @@ class MovieRepository {
   }
 
   Future<MovieDetailsModel> getMovieDetails(int id) async {
-    try {
-      final hasInternet = await _hasInternetConnection();
+  try {
+    final hasInternet = await _hasInternetConnection();
+    
+    if (hasInternet) {
+      final details = await _apiService.getMovieDetails(id, _apiKey);
+      await _database.insertMovieDetails(details);
       
-      if (hasInternet) {
-        final details = await _apiService.getMovieDetails(id, _apiKey);
-        await _database.insertMovieDetails(details);
-        // Also save to movies table for bookmark functionality
+      // Check if movie already exists (to preserve bookmark status)
+      final existingMovie = await _database.getMovie(id);
+      
+      // Only insert if movie doesn't exist, to preserve bookmark status
+      if (existingMovie == null) {
         await _database.insertMovies([details.toMovieModel()], 'details');
-        return details;
-      } else {
-        final cached = await _database.getMovieDetails(id);
-        if (cached != null) {
-          // Convert cached data to MovieDetailsModel
-          final genreNames = cached.genres?.split(', ') ?? [];
-          final genres = genreNames.map((name) => Genre(id: 0, name: name)).toList();
-          return MovieDetailsModel(
-            id: cached.id,
-            title: cached.title,
-            overview: cached.overview,
-            posterPath: cached.posterPath,
-            backdropPath: cached.backdropPath,
-            releaseDate: cached.releaseDate,
-            voteAverage: cached.voteAverage,
-            voteCount: cached.voteCount,
-            popularity: cached.popularity,
-            runtime: cached.runtime,
-            genres: genres.isNotEmpty ? genres : null,
-          );
-        }
-        throw Exception('Movie details not found in cache');
       }
-    } catch (e) {
+      
+      return details;
+    } else {
       final cached = await _database.getMovieDetails(id);
       if (cached != null) {
+        // Convert cached data to MovieDetailsModel
         final genreNames = cached.genres?.split(', ') ?? [];
         final genres = genreNames.map((name) => Genre(id: 0, name: name)).toList();
         return MovieDetailsModel(
@@ -166,9 +152,30 @@ class MovieRepository {
           genres: genres.isNotEmpty ? genres : null,
         );
       }
-      rethrow;
+      throw Exception('Movie details not found in cache');
     }
+  } catch (e) {
+    final cached = await _database.getMovieDetails(id);
+    if (cached != null) {
+      final genreNames = cached.genres?.split(', ') ?? [];
+      final genres = genreNames.map((name) => Genre(id: 0, name: name)).toList();
+      return MovieDetailsModel(
+        id: cached.id,
+        title: cached.title,
+        overview: cached.overview,
+        posterPath: cached.posterPath,
+        backdropPath: cached.backdropPath,
+        releaseDate: cached.releaseDate,
+        voteAverage: cached.voteAverage,
+        voteCount: cached.voteCount,
+        popularity: cached.popularity,
+        runtime: cached.runtime,
+        genres: genres.isNotEmpty ? genres : null,
+      );
+    }
+    rethrow;
   }
+}
 
   Future<List<MovieModel>> getBookmarkedMovies() async {
     final movies = await _database.getBookmarkedMovies();
